@@ -1,7 +1,7 @@
 # Ollama+NARSIM+Streamlit
 
 ## Installation
-
+'''
 git clone https://github.com/AshtonLKY/NARSIM_streamlit.git
 
 ## Usage
