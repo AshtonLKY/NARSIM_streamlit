@@ -19,7 +19,7 @@ from langchain_community.embeddings import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain.prompts import ChatPromptTemplate, PromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_community.chat_models import ChatOllama
 from langchain_core.runnables import RunnablePassthrough
 from langchain.retrievers.multi_query import MultiQueryRetriever
@@ -112,10 +112,36 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     """
     logger.info(f"""Processing question: {
                 question} using model: {selected_model}""")
-    llm = ChatOllama(model=selected_model, temperature=0)
+    # json_schema = {"aircraft 1": {
+    #     "departure": {
+    #       "af": "ICAO code of departure airfield here"
+    #     },
+    #     "initial_position": {
+    #       "latitude": "latitude in DMS format for example 023106.70N",
+    #       "longitude": "latitude in DMS format for example 1035709.81E",
+    #       "altitude": "Altitude reading for example FL160",
+    #       "heading": "heading in degrees 32.053335700277444"
+    #     },
+    #     "air_route": """list of waypoints that make up the air route, for example ["RAXIM", "OTLON", "VISAT", "DUBSA", "DAMOG", "DOLOX", "DUDIS"]""",
+    #     "destination": {
+    #       "af": "ICAO code of destination airfield here"
+    #     },
+    #     "time": "starting time of aircraft initialization in the simulator as an integer representing seconds",
+    #     "type": "type of aircraft, for example A320"}}
+    # dumps = json.dumps(json_schema, indent=2)
+    llm = ChatOllama(model=selected_model,
+    #format = 'json',
+    temperature=0)
+  
     QUERY_PROMPT = PromptTemplate(
         input_variables=["question"],
-        template="""You are an AI language model assistant. Your task is to generate 3
+        # template="""You are an AI language model assistant. Your task is to generate 3
+        # different versions of the given user question to retrieve relevant documents from
+        # a vector database. By generating multiple perspectives on the user question, your
+        # goal is to help the user overcome some of the limitations of the distance-based
+        # similarity search. Provide these alternative questions separated by newlines.
+        # Original question: {question}""",
+         template="""You are an AI language model assistant. Your task is to generate 2
         different versions of the given user question to retrieve relevant documents from
         a vector database. By generating multiple perspectives on the user question, your
         goal is to help the user overcome some of the limitations of the distance-based
@@ -124,13 +150,32 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     )
 
     retriever = MultiQueryRetriever.from_llm(
-        vector_db.as_retriever(), llm, prompt=QUERY_PROMPT
+        vector_db.as_retriever(), llm, prompt=QUERY_PROMPT, include_original=True
     )
 
-    template = """Answer the question with help from the following context:
+    template = """Answer perform the user requested task with help from the following context:
     {context}
-    Question: {question}
-    Add snippets of the context you used to answer the question.
+    User Request: {question}
+    If the user requests to generate aircraft scenarios please provide the answer in the form of JSON in the following schema:
+    {{"aircraft 0": {{
+        "departure": {{
+          "af": "ICAO code of departure airfield here"
+        }},
+        "initial_position": {{
+          "latitude": "latitude in DMS format for example 023106.70N",
+          "longitude": "latitude in DMS format for example 1035709.81E",
+          "altitude": "Altitude reading for example FL160",
+          "heading": "heading in degrees 32.053335700277444"
+        }},
+        "air_route": "list of waypoints that make up the air route, for example ["RAXIM", "OTLON", "VISAT", "DUBSA", "DAMOG", "DOLOX", "DUDIS"]",
+        "destination": {{
+          "af": "ICAO code of destination airfield here"
+        }},
+        "time": "starting time of aircraft initialization in the simulator as an integer representing seconds",
+        "type": "type of aircraft, for example A320"}}
+
+    If there are multiple aircraft, put all aircraft in a single dictionary with the keys labelled aircraft 1, aircraft 2, aircraft 3, etc.
+    If the user does not request for a scenario, simply reply normally, do not ever give Python code.
     """
 
     prompt = ChatPromptTemplate.from_template(template)
@@ -143,6 +188,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     )
 
     response = chain.invoke(question)
+    
     logger.info("Question processed and response generated")
     return response
 
@@ -198,47 +244,52 @@ def str2dict(response):
     # Find all matches
     matches = re.findall(pattern, response, re.DOTALL)
     json_str = ' '.join(matches)
+    
     try:
         json_d = json.loads(json_str)
+        # st.write(json_d)
     except json.JSONDecodeError:
-        print("Can't convert to JSON, check string")
+        st.write("Can't convert to JSON, check string")
     return json_d
 
 
-def flatten_json(data):
+# def flatten_json(data):
 
-    if not data:
-        print("JSON string is empty!")
-        return None
+#     if not data:
+#         print("JSON string is empty!")
+#         return None
 
-    if isinstance(data, dict):
-        # Check if the dictionary has the required keys
-        if all(key in data for key in ["departure", "time", "type", "initial_position", "air_route", "destination"]):
-            return data
+#     if isinstance(data, dict):
+#         # Check if the dictionary has the required keys
+#         if all(key in data for key in ["departure", "initial_position", "air_route", "destination", "time", "type"]):
+#             return data
 
-        # Recursively check each value in the dictionary
-        for key in data:
-            extracted = flatten_json(data[key])
-            if extracted:
-                return extracted
+#         # Recursively check each value in the dictionary
+#         for key in data:
+#             extracted = flatten_json(data[key])
+#             if extracted:
+#                 return extracted
 
-    return None
+#     return None
 
 
 def json_to_xml(json_data):
-    root = ET.Element("initial-flightplans", key="initial-flightplans: 69")
+  xml_list = []
+  st.write(json_data)
+  for i, item in enumerate(json_data.values()):
+    root = ET.Element("initial-flightplans", key="initial-flightplans: "+str(i))
 
     usage = ET.SubElement(root, "usage")
     usage.text = "ALL"
     time = ET.SubElement(root, "time")
-    time.text = str(json_data["time"])
+    time.text = str(item["time"])
     callsign = ET.SubElement(root, "callsign")
     callsign.text = "SQ123"
     rules = ET.SubElement(root, "rules")
     squawk = ET.SubElement(root, "squawk", units="octal")
     squawk.text = "0000"
     aircraft_type = ET.SubElement(root, "type")
-    aircraft_type.text = json_data["type"]
+    aircraft_type.text = item["type"]
     waketurb = ET.SubElement(root, "waketurb")
     waketurb.text = "MEDIUM"
     equip = ET.SubElement(root, "equip")
@@ -246,14 +297,14 @@ def json_to_xml(json_data):
 
     dep = ET.SubElement(root, "dep")
     dep_af = ET.SubElement(dep, "af")
-    dep_af.text = json_data["departure"]["af"]
+    dep_af.text = item["departure"]["af"]
     dep_rwy = ET.SubElement(dep, "rwy")
 
     des = ET.SubElement(root, "des")
     des_af = ET.SubElement(des, "af")
-    des_af.text = json_data["destination"]["af"]
+    des_af.text = item["destination"]["af"]
 
-    for route in json_data["air_route"]:
+    for route in item["air_route"]:
         air_route = ET.SubElement(root, "air_route")
         air_route.text = route
 
@@ -262,17 +313,18 @@ def json_to_xml(json_data):
     init = ET.SubElement(root, "init")
     pos = ET.SubElement(init, "pos")
     lat = ET.SubElement(pos, "lat")
-    lat.text = json_data["initial_position"]["latitude"]
+    lat.text = item["initial_position"]["latitude"]
     lon = ET.SubElement(pos, "lon")
-    lon.text = json_data["initial_position"]["longitude"]
+    lon.text = item["initial_position"]["longitude"]
 
     freq = ET.SubElement(init, "freq")
     alt = ET.SubElement(init, "alt", units="")
-    alt.text = json_data["initial_position"]["altitude"]
+    alt.text = item["initial_position"]["altitude"]
     hdg = ET.SubElement(init, "hdg")
-    hdg.text = json_data["initial_position"]["heading"]
+    hdg.text = item["initial_position"]["heading"]
+    xml_list.append(ET.tostring(root, encoding='unicode'))
 
-    return ET.tostring(root, encoding='unicode')
+  return xml_list
 
 
 def main() -> None:
@@ -354,7 +406,8 @@ def main() -> None:
                     st.session_state["messages"].append(
                         {"role": "assistant", "content": response}
                     )
-                json_d = flatten_json(str2dict(response))
+                json_d = str2dict(response)
+
                 if json_d:
                     # print(f"Valid JSON string: {json_str}")
                     st.write([json_to_xml(json_d)])
