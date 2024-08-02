@@ -281,6 +281,7 @@ def str2dict(response):
 
 
 def json_to_xml(json_data):
+    waket = {'A320': 'MEDIUM', 'B738': 'MEDIUM', 'B734':'MEDIUM', 'A388': 'HEAVY', 'A333': 'HEAVY'}
     # Create the root element <ifp>
     root_ifp = ET.Element("ifp")
     
@@ -317,7 +318,7 @@ def json_to_xml(json_data):
         aircraft_type = ET.SubElement(initial_flightplans, "type")
         aircraft_type.text = item["type"]
         waketurb = ET.SubElement(initial_flightplans, "waketurb")
-        waketurb.text = "MEDIUM"
+        waketurb.text = waket[item["type"]]
         equip = ET.SubElement(initial_flightplans, "equip")
         vehicle_type = ET.SubElement(initial_flightplans, "vehicle_type")
 
@@ -335,7 +336,7 @@ def json_to_xml(json_data):
             air_route.text = route
 
         rfl = ET.SubElement(initial_flightplans, "rfl")
-        rfl.text = "ALL"
+        rfl.text = '300'
         init = ET.SubElement(initial_flightplans, "init")
         pos = ET.SubElement(init, "pos")
         lat = ET.SubElement(pos, "lat")
