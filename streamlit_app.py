@@ -345,6 +345,7 @@ def json_to_xml(json_data):
         lon.text = item["initial_position"]["longitude"]
 
         freq = ET.SubElement(init, "freq")
+        freq.text = "SINRADS1"
         alt = ET.SubElement(init, "alt", units=item["initial_position"]["altitude"][:2])
         alt.text = item["initial_position"]["altitude"][2:]
         hdg = ET.SubElement(init, "hdg")
