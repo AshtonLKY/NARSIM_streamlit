@@ -287,14 +287,19 @@ def json_to_xml(json_data):
     # Add experiment-date element
     experiment_date = ET.SubElement(root_ifp, "experiment-date")
     day = ET.SubElement(experiment_date, "day")
+    day.text = 6
     month = ET.SubElement(experiment_date, "month")
+    month.text = 3
     year = ET.SubElement(experiment_date, "year")
+    year.text = 2022
     
     # Add experiment-time element
     experiment_time = ET.SubElement(root_ifp, "experiment-time")
+    experiment_time.text = '00000'
     
     # Add default-equipment element
     default_equipment = ET.SubElement(root_ifp, "default-equipment")
+    default_equipment.text = "SSR_MODE_A+SSR_MODE_C+P_RNAV+FMS+FMS_GUIDANCE_VNAV+FMS_GUIDANCE_SPEED"
     
     for i, item in enumerate(json_data.values()):
         # Create the initial-flightplans element
