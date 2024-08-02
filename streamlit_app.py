@@ -5,6 +5,7 @@ This application allows users to upload a PDF, process it,
 and then ask questions about the content using a selected language model.
 """
 import xml.etree.ElementTree as ET
+import xml.dom.minidom
 import streamlit as st
 import logging
 import os
@@ -153,7 +154,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
         vector_db.as_retriever(), llm, prompt=QUERY_PROMPT, include_original=True
     )
     retrieved_docs = retriever.get_relevant_documents(query=QUERY_PROMPT)
-    st.write(retrieved_docs)
+    # st.write(retrieved_docs)
     # results = vector_db.similarity_search_with_score(question, k=3)
 
     # retriever = "\n\n---\n\n".join(
@@ -280,57 +281,76 @@ def str2dict(response):
 
 
 def json_to_xml(json_data):
-  xml_list = []
-  st.write(json_data)
-  for i, item in enumerate(json_data.values()):
-    root = ET.Element("initial-flightplans", key="initial-flightplans: "+str(i))
+    # Create the root element <ifp>
+    root_ifp = ET.Element("ifp")
+    
+    # Add experiment-date element
+    experiment_date = ET.SubElement(root_ifp, "experiment-date")
+    day = ET.SubElement(experiment_date, "day")
+    month = ET.SubElement(experiment_date, "month")
+    year = ET.SubElement(experiment_date, "year")
+    
+    # Add experiment-time element
+    experiment_time = ET.SubElement(root_ifp, "experiment-time")
+    
+    # Add default-equipment element
+    default_equipment = ET.SubElement(root_ifp, "default-equipment")
+    
+    for i, item in enumerate(json_data.values()):
+        # Create the initial-flightplans element
+        initial_flightplans = ET.SubElement(root_ifp, "initial-flightplans", key="initial-flightplans: "+str(i))
+        
+        usage = ET.SubElement(initial_flightplans, "usage")
+        usage.text = "ALL"
+        time = ET.SubElement(initial_flightplans, "time")
+        time.text = str(item["time"])
+        callsign = ET.SubElement(initial_flightplans, "callsign")
+        callsign.text = "SQ123"
+        rules = ET.SubElement(initial_flightplans, "rules")
+        squawk = ET.SubElement(initial_flightplans, "squawk", units="octal")
+        squawk.text = "0000"
+        aircraft_type = ET.SubElement(initial_flightplans, "type")
+        aircraft_type.text = item["type"]
+        waketurb = ET.SubElement(initial_flightplans, "waketurb")
+        waketurb.text = "MEDIUM"
+        equip = ET.SubElement(initial_flightplans, "equip")
+        vehicle_type = ET.SubElement(initial_flightplans, "vehicle_type")
 
-    usage = ET.SubElement(root, "usage")
-    usage.text = "ALL"
-    time = ET.SubElement(root, "time")
-    time.text = str(item["time"])
-    callsign = ET.SubElement(root, "callsign")
-    callsign.text = "SQ123"
-    rules = ET.SubElement(root, "rules")
-    squawk = ET.SubElement(root, "squawk", units="octal")
-    squawk.text = "0000"
-    aircraft_type = ET.SubElement(root, "type")
-    aircraft_type.text = item["type"]
-    waketurb = ET.SubElement(root, "waketurb")
-    waketurb.text = "MEDIUM"
-    equip = ET.SubElement(root, "equip")
-    vehicle_type = ET.SubElement(root, "vehicle_type")
+        dep = ET.SubElement(initial_flightplans, "dep")
+        dep_af = ET.SubElement(dep, "af")
+        dep_af.text = item["departure"]["af"]
+        dep_rwy = ET.SubElement(dep, "rwy")
 
-    dep = ET.SubElement(root, "dep")
-    dep_af = ET.SubElement(dep, "af")
-    dep_af.text = item["departure"]["af"]
-    dep_rwy = ET.SubElement(dep, "rwy")
+        des = ET.SubElement(initial_flightplans, "des")
+        des_af = ET.SubElement(des, "af")
+        des_af.text = item["destination"]["af"]
 
-    des = ET.SubElement(root, "des")
-    des_af = ET.SubElement(des, "af")
-    des_af.text = item["destination"]["af"]
+        for route in item["air_route"]:
+            air_route = ET.SubElement(initial_flightplans, "air_route")
+            air_route.text = route
 
-    for route in item["air_route"]:
-        air_route = ET.SubElement(root, "air_route")
-        air_route.text = route
+        rfl = ET.SubElement(initial_flightplans, "rfl")
+        rfl.text = "ALL"
+        init = ET.SubElement(initial_flightplans, "init")
+        pos = ET.SubElement(init, "pos")
+        lat = ET.SubElement(pos, "lat")
+        lat.text = item["initial_position"]["latitude"]
+        lon = ET.SubElement(pos, "lon")
+        lon.text = item["initial_position"]["longitude"]
 
-    rfl = ET.SubElement(root, "rfl")
-    rfl.text = "ALL"
-    init = ET.SubElement(root, "init")
-    pos = ET.SubElement(init, "pos")
-    lat = ET.SubElement(pos, "lat")
-    lat.text = item["initial_position"]["latitude"]
-    lon = ET.SubElement(pos, "lon")
-    lon.text = item["initial_position"]["longitude"]
+        freq = ET.SubElement(init, "freq")
+        alt = ET.SubElement(init, "alt", units=item["initial_position"]["altitude"][:2])
+        alt.text = item["initial_position"]["altitude"][2:]
+        hdg = ET.SubElement(init, "hdg")
+        hdg.text = item["initial_position"]["heading"]
 
-    freq = ET.SubElement(init, "freq")
-    alt = ET.SubElement(init, "alt", units="")
-    alt.text = item["initial_position"]["altitude"]
-    hdg = ET.SubElement(init, "hdg")
-    hdg.text = item["initial_position"]["heading"]
-    xml_list.append(ET.tostring(root, encoding='unicode'))
+    # Convert the tree to a string
+    xdat_content = ET.tostring(root_ifp, encoding='UTF-8',xml_declaration=True)
+    # print(xdat_content)
+    dom = xml.dom.minidom.parseString(xdat_content)
+    pretty_xdat = dom.toprettyxml()
 
-  return xml_list
+    return pretty_xdat
 
 
 def main() -> None:
@@ -417,7 +437,16 @@ def main() -> None:
                 
                 if json_d:  
                     # print(f"Valid JSON string: {json_str}")
-                    st.write([json_to_xml(json_d)])
+                    # st.write([json_to_xml(json_d)])
+                    
+                    # Generate XDAT content
+                    pretty_xdat = json_to_xml(json_d)
+
+                    # Display XDAT content
+                    st.write(pretty_xdat)
+                    st.download_button(label='Download .xdat', data = pretty_xdat, file_name = "downloaded_scenario.xdat")
+                    # Button to download XDAT file
+
                 else:
                     st.error("The ouput does not contain valid JSON.")
             except Exception as e:
