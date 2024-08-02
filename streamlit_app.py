@@ -311,7 +311,7 @@ def json_to_xml(json_data):
         time = ET.SubElement(initial_flightplans, "time")
         time.text = str(item["time"])
         callsign = ET.SubElement(initial_flightplans, "callsign")
-        callsign.text = "SQ123"
+        callsign.text = "SQ1"+str(i)
         rules = ET.SubElement(initial_flightplans, "rules")
         squawk = ET.SubElement(initial_flightplans, "squawk", units="octal")
         squawk.text = "0000"
