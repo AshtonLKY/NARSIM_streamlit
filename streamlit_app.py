@@ -15,6 +15,7 @@ import pdfplumber
 import ollama
 import re
 import json
+import random
 from langchain_community.document_loaders import UnstructuredPDFLoader
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -84,7 +85,7 @@ def create_vector_db(file_upload) -> Chroma:
         data = loader.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800, chunk_overlap=200)
+        chunk_size=800, chunk_overlap=300)
     chunks = text_splitter.split_documents(data)
     logger.info("Document split into chunks")
 
@@ -142,7 +143,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
         # goal is to help the user overcome some of the limitations of the distance-based
         # similarity search. Provide these alternative questions separated by newlines.
         # Original question: {question}""",
-         template="""You are an AI language model assistant. Your task is to generate 2
+         template="""You are an AI language model assistant. Your task is to generate 3
         different versions of the given user question to retrieve relevant documents from
         a vector database. By generating multiple perspectives on the user question, your
         goal is to help the user overcome some of the limitations of the distance-based
@@ -305,7 +306,7 @@ def json_to_xml(json_data):
     for i, item in enumerate(json_data.values()):
         # Create the initial-flightplans element
         initial_flightplans = ET.SubElement(root_ifp, "initial-flightplans", key="initial-flightplans: "+str(i))
-        
+
         usage = ET.SubElement(initial_flightplans, "usage")
         usage.text = "ALL"
         time = ET.SubElement(initial_flightplans, "time")
@@ -314,7 +315,7 @@ def json_to_xml(json_data):
         callsign.text = "SQ1"+str(i)
         rules = ET.SubElement(initial_flightplans, "rules")
         squawk = ET.SubElement(initial_flightplans, "squawk", units="octal")
-        squawk.text = "0000"
+        squawk.text = str(random.randint(1000, 9999))
         aircraft_type = ET.SubElement(initial_flightplans, "type")
         aircraft_type.text = item["type"]
         waketurb = ET.SubElement(initial_flightplans, "waketurb")
@@ -345,7 +346,7 @@ def json_to_xml(json_data):
         lon.text = item["initial_position"]["longitude"]
 
         freq = ET.SubElement(init, "freq")
-        freq.text = "SINRADS1"
+        freq.text = 'SINRADS1'
         alt = ET.SubElement(init, "alt", units=item["initial_position"]["altitude"][:2])
         alt.text = item["initial_position"]["altitude"][2:]
         hdg = ET.SubElement(init, "hdg")
