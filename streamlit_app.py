@@ -83,7 +83,7 @@ def create_vector_db(file_upload) -> Chroma:
         data = loader.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=2000, chunk_overlap=500)
+        chunk_size=550, chunk_overlap=200)
     chunks = text_splitter.split_documents(data)
     logger.info("Document split into chunks")
 
@@ -131,7 +131,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     # dumps = json.dumps(json_schema, indent=2)
     llm = ChatOllama(model=selected_model,
     #format = 'json',
-    temperature=0)
+    temperature=0.1)
   
     QUERY_PROMPT = PromptTemplate(
         input_variables=["question"],
@@ -152,8 +152,14 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     retriever = MultiQueryRetriever.from_llm(
         vector_db.as_retriever(), llm, prompt=QUERY_PROMPT, include_original=True
     )
+    retrieved_docs = retriever.get_relevant_documents(query=QUERY_PROMPT)
+    st.write(retrieved_docs)
+    # results = vector_db.similarity_search_with_score(question, k=3)
 
-    template = """Answer perform the user requested task with help from the following context:
+    # retriever = "\n\n---\n\n".join(
+    #     [doc.page_content for doc, _score in results])
+
+    template = """Answer or perform the user requested task with help from the following context:
     {context}
     User Request: {question}
     If the user requests to generate aircraft scenarios please provide the answer in the form of JSON in the following schema:
@@ -249,7 +255,7 @@ def str2dict(response):
         json_d = json.loads(json_str)
         # st.write(json_d)
     except json.JSONDecodeError:
-        st.write("Can't convert to JSON, check string")
+        json_d = ""
     return json_d
 
 
@@ -408,11 +414,12 @@ def main() -> None:
                     )
                 json_d = str2dict(response)
 
-                if json_d:
+                
+                if json_d:  
                     # print(f"Valid JSON string: {json_str}")
                     st.write([json_to_xml(json_d)])
                 else:
-                    print("The string does not contain valid JSON.")
+                    st.error("The ouput does not contain valid JSON.")
             except Exception as e:
                 st.error(e, icon="⛔️")
                 logger.error(f"Error processing prompt: {e}")
