@@ -287,11 +287,11 @@ def json_to_xml(json_data):
     # Add experiment-date element
     experiment_date = ET.SubElement(root_ifp, "experiment-date")
     day = ET.SubElement(experiment_date, "day")
-    day.text = 6
+    day.text = '6'
     month = ET.SubElement(experiment_date, "month")
-    month.text = 3
+    month.text = '3'
     year = ET.SubElement(experiment_date, "year")
-    year.text = 2022
+    year.text = '2022'
     
     # Add experiment-time element
     experiment_time = ET.SubElement(root_ifp, "experiment-time")
