@@ -84,7 +84,7 @@ def create_vector_db(file_upload) -> Chroma:
         data = loader.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=550, chunk_overlap=200)
+        chunk_size=800, chunk_overlap=200)
     chunks = text_splitter.split_documents(data)
     logger.info("Document split into chunks")
 
@@ -154,7 +154,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
         vector_db.as_retriever(), llm, prompt=QUERY_PROMPT, include_original=True
     )
     retrieved_docs = retriever.get_relevant_documents(query=QUERY_PROMPT)
-    # st.write(retrieved_docs)
+    st.write(retrieved_docs)
     # results = vector_db.similarity_search_with_score(question, k=3)
 
     # retriever = "\n\n---\n\n".join(
@@ -281,7 +281,7 @@ def str2dict(response):
 
 
 def json_to_xml(json_data):
-    waket = {'A320': 'MEDIUM', 'B738': 'MEDIUM', 'B734':'MEDIUM', 'A388': 'HEAVY', 'A333': 'HEAVY'}
+    waket = {'A320': 'MEDIUM', 'B738': 'MEDIUM','B744':'HEAVY', 'B734':'MEDIUM', 'A388': 'HEAVY', 'A333': 'HEAVY'}
     # Create the root element <ifp>
     root_ifp = ET.Element("ifp")
     
