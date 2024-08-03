@@ -20,12 +20,14 @@ from langchain_community.document_loaders import UnstructuredPDFLoader
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
-from langchain.prompts import ChatPromptTemplate, PromptTemplate
+from langchain.prompts import ChatPromptTemplate, PromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_community.chat_models import ChatOllama
 from langchain_core.runnables import RunnablePassthrough
 from langchain.retrievers.multi_query import MultiQueryRetriever
+from langchain_core.messages import HumanMessage, AIMessage
 from typing import List, Tuple, Dict, Any, Optional
+
 
 # Streamlit page configuration
 st.set_page_config(
@@ -85,7 +87,7 @@ def create_vector_db(file_upload) -> Chroma:
         data = loader.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800, chunk_overlap=300)
+        chunk_size=2050, chunk_overlap=300)
     chunks = text_splitter.split_documents(data)
     logger.info("Document split into chunks")
 
@@ -99,6 +101,15 @@ def create_vector_db(file_upload) -> Chroma:
     logger.info(f"Temporary directory {temp_dir} removed")
     return vector_db
 
+def get_history(chat):
+  chat_history = []
+  # recall_value = 6
+  for m in chat:
+    if m['role'] == 'user':
+      chat_history.append(HumanMessage(content = m["content"]))
+    elif m["role"] == "assistant":
+      chat_history.append(AIMessage(content = m["content"]))
+  return chat_history
 
 def process_question(question: str, vector_db: Chroma, selected_model: str) -> str:
     """
@@ -114,41 +125,17 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     """
     logger.info(f"""Processing question: {
                 question} using model: {selected_model}""")
-    # json_schema = {"aircraft 1": {
-    #     "departure": {
-    #       "af": "ICAO code of departure airfield here"
-    #     },
-    #     "initial_position": {
-    #       "latitude": "latitude in DMS format for example 023106.70N",
-    #       "longitude": "latitude in DMS format for example 1035709.81E",
-    #       "altitude": "Altitude reading for example FL160",
-    #       "heading": "heading in degrees 32.053335700277444"
-    #     },
-    #     "air_route": """list of waypoints that make up the air route, for example ["RAXIM", "OTLON", "VISAT", "DUBSA", "DAMOG", "DOLOX", "DUDIS"]""",
-    #     "destination": {
-    #       "af": "ICAO code of destination airfield here"
-    #     },
-    #     "time": "starting time of aircraft initialization in the simulator as an integer representing seconds",
-    #     "type": "type of aircraft, for example A320"}}
-    # dumps = json.dumps(json_schema, indent=2)
+
     llm = ChatOllama(model=selected_model,
     #format = 'json',
     temperature=0.1)
-  
     QUERY_PROMPT = PromptTemplate(
         input_variables=["question"],
-        # template="""You are an AI language model assistant. Your task is to generate 3
-        # different versions of the given user question to retrieve relevant documents from
-        # a vector database. By generating multiple perspectives on the user question, your
-        # goal is to help the user overcome some of the limitations of the distance-based
-        # similarity search. Provide these alternative questions separated by newlines.
-        # Original question: {question}""",
-         template="""You are an AI language model assistant. Your task is to generate 3
+        template="""You are an AI language model assistant. Your task is to generate 3
         different versions of the given user question to retrieve relevant documents from
         a vector database. By generating multiple perspectives on the user question, your
         goal is to help the user overcome some of the limitations of the distance-based
-        similarity search. Provide these alternative questions separated by newlines.
-        Original question: {question}""",
+        similarity search.""",
     )
 
     retriever = MultiQueryRetriever.from_llm(
@@ -156,46 +143,47 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     )
     retrieved_docs = retriever.get_relevant_documents(query=QUERY_PROMPT)
     st.write(retrieved_docs)
-    # results = vector_db.similarity_search_with_score(question, k=3)
+    prompt = ChatPromptTemplate.from_messages(
+      [
+        (
+          "system",
+          """You are an AI agent that performs the user requested task with help from the context provided by the vector database.
+            If the user requests to generate aircraft scenarios please provide the answer in the form of JSON in the following schema:
+            {{"aircraft 0": {{
+                "departure": {{
+                  "af": "ICAO code of departure airfield here"
+                }},
+                "initial_position": {{
+                  "latitude": "latitude in DMS format for example 023106.70N",
+                  "longitude": "latitude in DMS format for example 1035709.81E",
+                  "altitude": "Altitude reading for example FL160",
+                  "heading": "heading in degrees 32.053335700277444"
+                }},
+                "air_route": "list of waypoints that make up the air route, for example ["RAXIM", "OTLON", "VISAT", "DUBSA", "DAMOG", "DOLOX", "DUDIS"]",
+                "destination": {{
+                  "af": "ICAO code of destination airfield here"
+                }},
+                "time": "starting time of aircraft initialization in the simulator as an integer representing seconds",
+                "type": "type of aircraft, for example A320"}}
 
-    # retriever = "\n\n---\n\n".join(
-    #     [doc.page_content for doc, _score in results])
-
-    template = """Answer or perform the user requested task with help from the following context:
-    {context}
-    User Request: {question}
-    If the user requests to generate aircraft scenarios please provide the answer in the form of JSON in the following schema:
-    {{"aircraft 0": {{
-        "departure": {{
-          "af": "ICAO code of departure airfield here"
-        }},
-        "initial_position": {{
-          "latitude": "latitude in DMS format for example 023106.70N",
-          "longitude": "latitude in DMS format for example 1035709.81E",
-          "altitude": "Altitude reading for example FL160",
-          "heading": "heading in degrees 32.053335700277444"
-        }},
-        "air_route": "list of waypoints that make up the air route, for example ["RAXIM", "OTLON", "VISAT", "DUBSA", "DAMOG", "DOLOX", "DUDIS"]",
-        "destination": {{
-          "af": "ICAO code of destination airfield here"
-        }},
-        "time": "starting time of aircraft initialization in the simulator as an integer representing seconds",
-        "type": "type of aircraft, for example A320"}}
-
-    If there are multiple aircraft, put all aircraft in a single dictionary with the keys labelled aircraft 1, aircraft 2, aircraft 3, etc.
-    If the user does not request for a scenario, simply reply normally, do not ever give Python code.
-    """
-
-    prompt = ChatPromptTemplate.from_template(template)
-
+            If there are multiple aircraft, put all aircraft in a single dictionary with the keys labelled aircraft 1, aircraft 2, aircraft 3, etc.
+            You are to use flight information found in the vector database only. 
+            If the user does not request for a scenario, simply reply normally, do not ever give Python code.
+          """),
+          MessagesPlaceholder(variable_name = "chat_history"),
+          ("human", """Answer or perform the user requested task with help from the following context from the vector database:
+                    {context}
+                    User Request: {input}"""),
+      ]
+        )
+    chat_history = get_history(st.session_state.messages)
     chain = (
-        {"context": retriever, "question": RunnablePassthrough()}
-        | prompt
+        prompt
         | llm
         | StrOutputParser()
     )
 
-    response = chain.invoke(question)
+    response = chain.invoke({"context": retriever, "input": question, "chat_history": chat_history})
     
     logger.info("Question processed and response generated")
     return response
