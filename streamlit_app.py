@@ -87,7 +87,7 @@ def create_vector_db(file_upload) -> Chroma:
         data = loader.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=2050, chunk_overlap=300)
+        chunk_size= 550, chunk_overlap=100)
     chunks = text_splitter.split_documents(data)
     logger.info("Document split into chunks")
 
@@ -101,7 +101,7 @@ def create_vector_db(file_upload) -> Chroma:
     logger.info(f"Temporary directory {temp_dir} removed")
     return vector_db
 
-def get_history(chat):
+def get_history(chat): #added get_history function
   chat_history = []
   # recall_value = 6
   for m in chat:
@@ -129,20 +129,21 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     llm = ChatOllama(model=selected_model,
     #format = 'json',
     temperature=0.1)
-    QUERY_PROMPT = PromptTemplate(
-        input_variables=["question"],
-        template="""You are an AI language model assistant. Your task is to generate 3
-        different versions of the given user question to retrieve relevant documents from
-        a vector database. By generating multiple perspectives on the user question, your
-        goal is to help the user overcome some of the limitations of the distance-based
-        similarity search.""",
-    )
+
+
+    # QUERY_PROMPT = PromptTemplate(
+    #     input_variables=["question"],
+    #     template="""You are an AI language model assistant. Your task is to generate 3
+    #     different versions of the given user question to retrieve relevant documents from
+    #     a vector database. By generating multiple perspectives on the user question, your
+    #     goal is to help the user overcome some of the limitations of the distance-based
+    #     similarity search. Original question: {question}""",
+    # )
 
     retriever = MultiQueryRetriever.from_llm(
-        vector_db.as_retriever(), llm, prompt=QUERY_PROMPT, include_original=True
+        vector_db.as_retriever(), llm, include_original=True
     )
-    retrieved_docs = retriever.get_relevant_documents(query=QUERY_PROMPT)
-    st.write(retrieved_docs)
+    extracted_docs = retriever.invoke(question)
     prompt = ChatPromptTemplate.from_messages(
       [
         (
@@ -173,9 +174,10 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
           MessagesPlaceholder(variable_name = "chat_history"),
           ("human", """Answer or perform the user requested task with help from the following context from the vector database:
                     {context}
-                    User Request: {input}"""),
+                    User Request: {question}"""),
       ]
         )
+    # st.write(unique_docs)
     chat_history = get_history(st.session_state.messages)
     chain = (
         prompt
@@ -183,7 +185,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
         | StrOutputParser()
     )
 
-    response = chain.invoke({"context": retriever, "input": question, "chat_history": chat_history})
+    response = chain.invoke({"context": extracted_docs, "question": question, "chat_history": chat_history})
     
     logger.info("Question processed and response generated")
     return response
