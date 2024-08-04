@@ -31,8 +31,8 @@ from typing import List, Tuple, Dict, Any, Optional
 
 # Streamlit page configuration
 st.set_page_config(
-    page_title="Ollama PDF RAG Streamlit UI",
-    page_icon="🎈",
+    page_title="Ollama Conversational RAG Streamlit UI",
+    page_icon="✈️",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -357,7 +357,7 @@ def main() -> None:
     This function sets up the user interface, handles file uploads,
     processes user queries, and displays results.
     """
-    st.subheader("🧠 Ollama PDF RAG playground", divider="gray", anchor=False)
+    st.subheader("✈️ NARSIM Scenario Generator Bot", divider="gray", anchor=False)
 
     models_info = ollama.list()
     available_models = extract_model_names(models_info)
@@ -404,7 +404,7 @@ def main() -> None:
         message_container = st.container(height=500, border=True)
 
         for message in st.session_state["messages"]:
-            avatar = "🤖" if message["role"] == "assistant" else "😎"
+            avatar = "🤖" if message["role"] == "assistant" else "👨‍✈️"
             with message_container.chat_message(message["role"], avatar=avatar):
                 st.markdown(message["content"])
 
@@ -413,7 +413,7 @@ def main() -> None:
                 st.session_state["messages"].append(
                     {"role": "user", "content": prompt})
                 message_container.chat_message(
-                    "user", avatar="😎").markdown(prompt)
+                    "user", avatar="👨‍✈️").markdown(prompt)
 
                 with message_container.chat_message("assistant", avatar="🤖"):
                     with st.spinner(":green[processing...]"):
