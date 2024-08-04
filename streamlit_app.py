@@ -149,6 +149,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
         (
           "system",
           """You are an AI agent that performs the user requested task with help from the context provided by the vector database.
+            Context from vector database: {context}
             If the user requests to generate aircraft scenarios please provide the answer in the form of JSON in the following schema:
             {{"aircraft 0": {{
                 "departure": {{
@@ -172,9 +173,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
             If the user does not request for a scenario, simply reply normally, do not ever give Python code.
           """),
           MessagesPlaceholder(variable_name = "chat_history"),
-          ("human", """Answer or perform the user requested task with help from the following context from the vector database:
-                    {context}
-                    User Request: {question}"""),
+          ("human", "{question}"),
       ]
         )
     # st.write(unique_docs)
