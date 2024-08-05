@@ -87,7 +87,7 @@ def create_vector_db(file_upload) -> Chroma:
         data = loader.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size= 550, chunk_overlap=100)
+        chunk_size=550, chunk_overlap=200)
     chunks = text_splitter.split_documents(data)
     logger.info("Document split into chunks")
 
@@ -101,15 +101,17 @@ def create_vector_db(file_upload) -> Chroma:
     logger.info(f"Temporary directory {temp_dir} removed")
     return vector_db
 
-def get_history(chat): #added get_history function
-  chat_history = []
-  # recall_value = 6
-  for m in chat:
-    if m['role'] == 'user':
-      chat_history.append(HumanMessage(content = m["content"]))
-    elif m["role"] == "assistant":
-      chat_history.append(AIMessage(content = m["content"]))
-  return chat_history
+
+def get_history(chat):  # added get_history function
+    chat_history = []
+    # recall_value = 6
+    for m in chat:
+        if m['role'] == 'user':
+            chat_history.append(HumanMessage(content=m["content"]))
+        elif m["role"] == "assistant":
+            chat_history.append(AIMessage(content=m["content"]))
+    return chat_history
+
 
 def process_question(question: str, vector_db: Chroma, selected_model: str) -> str:
     """
@@ -127,9 +129,8 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
                 question} using model: {selected_model}""")
 
     llm = ChatOllama(model=selected_model,
-    #format = 'json',
-    temperature=0.1)
-
+                     # format = 'json',
+                     temperature=0.1)
 
     # QUERY_PROMPT = PromptTemplate(
     #     input_variables=["question"],
@@ -145,10 +146,10 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     )
     extracted_docs = retriever.invoke(question)
     prompt = ChatPromptTemplate.from_messages(
-      [
-        (
-          "system",
-          """You are an AI agent that performs the user requested task with help from the context provided by the vector database.
+        [
+            (
+                "system",
+                """You are an AI agent that performs the user requested task with help from the context provided by the vector database.
             Context from vector database: {context}
             If the user requests to generate aircraft scenarios please provide the answer in the form of JSON in the following schema:
             {{"aircraft 0": {{
@@ -172,11 +173,11 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
             You are to use flight information found in the vector database only. 
             If the user does not request for a scenario, simply reply normally, do not ever give Python code.
           """),
-          MessagesPlaceholder(variable_name = "chat_history"),
-          ("human", "{question}"),
-      ]
-        )
-    # st.write(unique_docs)
+            MessagesPlaceholder(variable_name="chat_history"),
+            ("human", "{question}"),
+        ]
+    )
+    #st.write(extracted_docs)
     chat_history = get_history(st.session_state.messages)
     chain = (
         prompt
@@ -184,8 +185,9 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
         | StrOutputParser()
     )
 
-    response = chain.invoke({"context": extracted_docs, "question": question, "chat_history": chat_history})
-    
+    response = chain.invoke(
+        {"context": extracted_docs, "question": question, "chat_history": chat_history})
+
     logger.info("Question processed and response generated")
     return response
 
@@ -241,7 +243,7 @@ def str2dict(response):
     # Find all matches
     matches = re.findall(pattern, response, re.DOTALL)
     json_str = ' '.join(matches)
-    
+
     try:
         json_d = json.loads(json_str)
         # st.write(json_d)
@@ -271,10 +273,11 @@ def str2dict(response):
 
 
 def json_to_xml(json_data):
-    waket = {'A320': 'MEDIUM', 'B738': 'MEDIUM','B744':'HEAVY', 'B734':'MEDIUM', 'A388': 'HEAVY', 'A333': 'HEAVY'}
+    waket = {'A320': 'MEDIUM', 'B738': 'MEDIUM', 'B744': 'HEAVY',
+             'B734': 'MEDIUM', 'A388': 'HEAVY', 'A333': 'HEAVY'}
     # Create the root element <ifp>
     root_ifp = ET.Element("ifp")
-    
+
     # Add experiment-date element
     experiment_date = ET.SubElement(root_ifp, "experiment-date")
     day = ET.SubElement(experiment_date, "day")
@@ -283,18 +286,19 @@ def json_to_xml(json_data):
     month.text = '3'
     year = ET.SubElement(experiment_date, "year")
     year.text = '2022'
-    
+
     # Add experiment-time element
     experiment_time = ET.SubElement(root_ifp, "experiment-time")
     experiment_time.text = '00000'
-    
+
     # Add default-equipment element
     default_equipment = ET.SubElement(root_ifp, "default-equipment")
     default_equipment.text = "SSR_MODE_A+SSR_MODE_C+P_RNAV+FMS+FMS_GUIDANCE_VNAV+FMS_GUIDANCE_SPEED"
-    
+
     for i, item in enumerate(json_data.values()):
         # Create the initial-flightplans element
-        initial_flightplans = ET.SubElement(root_ifp, "initial-flightplans", key="initial-flightplans: "+str(i))
+        initial_flightplans = ET.SubElement(
+            root_ifp, "initial-flightplans", key="initial-flightplans: "+str(i))
 
         usage = ET.SubElement(initial_flightplans, "usage")
         usage.text = "ALL"
@@ -336,13 +340,15 @@ def json_to_xml(json_data):
 
         freq = ET.SubElement(init, "freq")
         freq.text = 'SINRADS1'
-        alt = ET.SubElement(init, "alt", units=item["initial_position"]["altitude"][:2])
+        alt = ET.SubElement(
+            init, "alt", units=item["initial_position"]["altitude"][:2])
         alt.text = item["initial_position"]["altitude"][2:]
         hdg = ET.SubElement(init, "hdg")
         hdg.text = item["initial_position"]["heading"]
 
     # Convert the tree to a string
-    xdat_content = ET.tostring(root_ifp, encoding='UTF-8',xml_declaration=True)
+    xdat_content = ET.tostring(
+        root_ifp, encoding='UTF-8', xml_declaration=True)
     # print(xdat_content)
     dom = xml.dom.minidom.parseString(xdat_content)
     pretty_xdat = dom.toprettyxml()
@@ -357,7 +363,8 @@ def main() -> None:
     This function sets up the user interface, handles file uploads,
     processes user queries, and displays results.
     """
-    st.subheader("✈️ NARSIM Scenario Generator Bot", divider="gray", anchor=False)
+    st.subheader("✈️ NARSIM Scenario Generator Bot",
+                 divider="gray", anchor=False)
 
     models_info = ollama.list()
     available_models = extract_model_names(models_info)
@@ -431,17 +438,17 @@ def main() -> None:
                     )
                 json_d = str2dict(response)
 
-                
-                if json_d:  
+                if json_d:
                     # print(f"Valid JSON string: {json_str}")
                     # st.write([json_to_xml(json_d)])
-                    
+
                     # Generate XDAT content
                     pretty_xdat = json_to_xml(json_d)
 
                     # Display XDAT content
                     st.write(pretty_xdat)
-                    st.download_button(label='Download .xdat', data = pretty_xdat, file_name = "downloaded_scenario.xdat")
+                    st.download_button(
+                        label='Download .xdat', data=pretty_xdat, file_name="downloaded_scenario.xdat")
                     # Button to download XDAT file
 
                 else:
