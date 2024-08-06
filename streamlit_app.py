@@ -87,7 +87,7 @@ def create_vector_db(file_upload) -> Chroma:
         data = loader.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=550, chunk_overlap=200)
+        chunk_size=700, chunk_overlap=220)
     chunks = text_splitter.split_documents(data)
     logger.info("Document split into chunks")
 
