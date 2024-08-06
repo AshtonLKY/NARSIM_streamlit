@@ -87,11 +87,12 @@ def create_vector_db(file_upload) -> Chroma:
         data = loader.load()
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=700, chunk_overlap=220)
+        chunk_size=550, chunk_overlap=50)
     chunks = text_splitter.split_documents(data)
     logger.info("Document split into chunks")
 
-    embeddings = OllamaEmbeddings(model="nomic-embed-text", show_progress=True)
+    embeddings = OllamaEmbeddings(
+        model="mxbai-embed-large", show_progress=True)
     vector_db = Chroma.from_documents(
         documents=chunks, embedding=embeddings, collection_name="myRAG"
     )
@@ -141,16 +142,28 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     #     similarity search. Original question: {question}""",
     # )
 
-    retriever = MultiQueryRetriever.from_llm(
-        vector_db.as_retriever(), llm, include_original=True
-    )
+    # retriever = MultiQueryRetriever.from_llm(
+    #     vector_db.as_retriever(), llm=llm, include_original=True
+    # )
+    retriever = vector_db.as_retriever(
+        search_type="mmr", search_kwargs={"fetch_k": 29, "k": 6, "lambda_mult": 0.8})
+
     extracted_docs = retriever.invoke(question)
+
+    def format_docs(docs):
+        # st.write("\n\n".join(doc.page_content for doc in docs))
+        return "\n\n".join(doc.page_content for doc in docs)
+    formatted_docs = format_docs(extracted_docs)
+    st.write([formatted_docs])
     prompt = ChatPromptTemplate.from_messages(
         [
             (
                 "system",
-                """You are an AI agent that answers or performs the user requested task with help from the context provided by the vector database.
+                """You are an AI agent that answers or performs the user requested task with help from the context provided by the vector database. If the requested, use information from the vector database ONLY.
             Context from vector database: {context}
+            
+            ---------------------------------------------------
+            
             If the user requests to generate aircraft scenarios please provide the answer in the form of JSON in the following schema:
             {{"aircraft 0": {{
                 "departure": {{
@@ -238,7 +251,8 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     #         ("human", "{question}"),
     #     ]
     # )
-    st.write(extracted_docs)
+    # extracted_docs = retriever.get_relevant_documents(query=QUERY_PROMPT)
+    # st.write(extracted_docs)
     chat_history = get_history(st.session_state.messages)
     chain = (
         prompt
@@ -247,7 +261,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     )
 
     response = chain.invoke(
-        {"context": extracted_docs, "question": question, "chat_history": chat_history})
+        {"context": formatted_docs, "question": question, "chat_history": chat_history})
 
     logger.info("Question processed and response generated")
     return response
@@ -334,7 +348,7 @@ def str2dict(response):
 
 
 def json_to_xml(json_data):
-    waket = {'A320': 'MEDIUM', 'B738': 'MEDIUM', 'B744': 'HEAVY',
+    waket = {'A320': 'MEDIUM', 'B738': 'MEDIUM', 'B737': 'MEDIUM', 'B744': 'HEAVY',
              'B734': 'MEDIUM', 'A388': 'HEAVY', 'A333': 'HEAVY'}
     # Create the root element <ifp>
     root_ifp = ET.Element("ifp")
