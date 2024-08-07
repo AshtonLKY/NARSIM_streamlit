@@ -155,49 +155,17 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
         return "\n\n".join(doc.page_content for doc in docs)
     formatted_docs = format_docs(extracted_docs)
     st.write([formatted_docs])
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                """You are an AI agent that answers or performs the user requested task with help from the context provided by the vector database. If the requested, use information from the vector database ONLY.
-            Context from vector database: {context}
-            
-            ---------------------------------------------------
-            
-            If the user requests to generate aircraft scenarios please provide the answer in the form of JSON in the following schema:
-            {{"aircraft 0": {{
-                "departure": {{
-                  "af": "ICAO code of departure airfield here"
-                }},
-                "initial_position": {{
-                  "latitude": "latitude in DMS format for example 023106.70N",
-                  "longitude": "latitude in DMS format for example 1035709.81E",
-                  "altitude": "Altitude reading for example FL160",
-                  "heading": "heading in degrees 32.053335700277444"
-                }},
-                "air_route": "list of waypoints that make up the air route, for example ["RAXIM", "OTLON", "VISAT", "DUBSA", "DAMOG", "DOLOX", "DUDIS"]",
-                "destination": {{
-                  "af": "ICAO code of destination airfield here"
-                }},
-                "time": "starting time of aircraft initialization in the simulator as an integer representing seconds",
-                "type": "type of aircraft, for example A320"}}
-
-            If there are multiple aircraft, put all aircraft in a single dictionary with the keys labelled aircraft 1, aircraft 2, aircraft 3, etc.
-            You are to use flight information found in the vector database only.
-            If the user does not request for a scenario, simply reply normally, do not ever give Python code.
-          """),
-            MessagesPlaceholder(variable_name="chat_history"),
-            ("human", "User Prompt: {question}"),
-        ]
-    )
     # prompt = ChatPromptTemplate.from_messages(
     #     [
     #         (
     #             "system",
-    #             """You are an AI assistant capable of generating air traffic scenarios for a simulator. The simulator requires  6 parameters shown in schema_1.
+    #             """You are an AI agent that answers or performs the user requested task with help from the context provided by the vector database. If the requested, use information from the vector database ONLY.
+    #         Context from vector database: {context}
 
-    #             schema_1:
-    #              {{"aircraft 0": {{
+    #         ---------------------------------------------------
+
+    #         If the user requests to generate aircraft scenarios please provide the answer in the form of JSON in the following schema:
+    #         {{"aircraft 0": {{
     #             "departure": {{
     #               "af": "ICAO code of departure airfield here"
     #             }},
@@ -214,43 +182,75 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     #             "time": "starting time of aircraft initialization in the simulator as an integer representing seconds",
     #             "type": "type of aircraft, for example A320"}}
 
-    #             ---------------------------------------------------------
-    #             Below is the explanation of the 6 parameters in schema_1:
-    #             Based on the provided PDF document, here is the explanation of each key in the given JSON text:
-
-    #             1. **"departure"**:
-    #             - **"af"**: Represents the ICAO (International Civil Aviation Organization) code of the departure airfield. It should be a string of maximum size 4 characters.
-
-    #             2. **"initial_position"**:
-    #             - **"latitude"**: Latitude in Degrees, Minutes, and Seconds (DMS) format, e.g., 023106.70N.
-    #             - **"longitude"**: Longitude in DMS format, e.g., 1035709.81E.
-    #             - **"altitude"**: Altitude reading in meters above sea level, e.g., FL160, where FL represents flight level.
-    #             - **"heading"**: Heading in degrees (0-360), e.g., 32.053335700277444.
-
-    #             The initial_position represents the position the aircraft will initialize to once the simulation starts.
-
-    #             3. **"air_route"**: List of waypoints that make up the air route. Each waypoint is a string with a maximum size of 10 characters. For example, ["RAXIM", "OTLON", "VISAT", "DUBSA", "DAMOG", "DOLOX", "DUDIS"].
-
-    #             The simulated aircraft will travel from the initial_position along these air routes.
-
-    #             4. **"destination"**:
-    #             - **"af"**: Represents the ICAO code of the destination airfield. It should be a string of maximum size 4 characters.
-
-    #             5. **"time"**: Starting time of aircraft initialization in the simulator, represented as an integer in seconds.
-
-    #             6. **"type"**: Type of aircraft, e.g., A320. This should be a string with a maximum size of 4 characters.
-    #             -----------------------------------------------------------
-    #             When generating scenarios, consider the common air routes from the data bundle and find their respective coordinates, which are also found in the data bundle. Then knowing the path and distance the aircraft is going to take via calculation from the series of coordinates, set an initialization position and time such that the scenario will play out in accordance to the user's request.
-    #             Data bundle: {context}
-
-    #             -----------------------------------------------------------
-    #             When the user requests for a scenario, strictly give the output in JSON based on schema_1. Do not give python code. If the user asks for something unrelated, just reply normally.
-
+    #         If there are multiple aircraft, put all aircraft in a single dictionary with the keys labelled aircraft 1, aircraft 2, aircraft 3, etc.
+    #         You are to use flight information found in the vector database only.
+    #         If the user does not request for a scenario, simply reply normally, do not ever give Python code. Look into the chat_history to understand the context of the conversation before answering.
     #       """),
     #         MessagesPlaceholder(variable_name="chat_history"),
-    #         ("human", "{question}"),
+    #         ("human", "User Prompt: {question}"),
     #     ]
     # )
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """You are an AI assistant capable of generating air traffic scenarios for a simulator. The simulator requires  6 parameters shown in schema_1.
+
+                schema_1:
+                 {{"aircraft 0": {{
+                "departure": {{
+                  "af": "ICAO code of departure airfield here"
+                }},
+                "initial_position": {{
+                  "latitude": "latitude in DMS format for example 023106.70N",
+                  "longitude": "latitude in DMS format for example 1035709.81E",
+                  "altitude": "Altitude reading for example FL160",
+                  "heading": "heading in degrees 32.053335700277444"
+                }},
+                "air_route": "list of waypoints that make up the air route, for example ["RAXIM", "OTLON", "VISAT", "DUBSA", "DAMOG", "DOLOX", "DUDIS"]",
+                "destination": {{
+                  "af": "ICAO code of destination airfield here"
+                }},
+                "time": "starting time of aircraft initialization in the simulator as an integer representing seconds",
+                "type": "type of aircraft, for example A320"}}
+
+                ---------------------------------------------------------
+                Below is the explanation of the 6 parameters in schema_1:
+                Based on the provided PDF document, here is the explanation of each key in the given JSON text:
+
+                1. **"departure"**:
+                - **"af"**: Represents the ICAO (International Civil Aviation Organization) code of the departure airfield. It should be a string of maximum size 4 characters.
+
+                2. **"initial_position"**:
+                - **"latitude"**: Latitude in Degrees, Minutes, and Seconds (DMS) format, e.g., 023106.70N.
+                - **"longitude"**: Longitude in DMS format, e.g., 1035709.81E.
+                - **"altitude"**: Altitude reading in meters above sea level, e.g., FL160, where FL represents flight level.
+                - **"heading"**: Heading in degrees (0-360), e.g., 32.053335700277444.
+
+                The initial_position represents the position the aircraft will initialize to once the simulation starts.
+
+                3. **"air_route"**: List of waypoints that make up the air route. Each waypoint is a string with a maximum size of 10 characters. For example, ["RAXIM", "OTLON", "VISAT", "DUBSA", "DAMOG", "DOLOX", "DUDIS"].
+
+                The simulated aircraft will travel from the initial_position along these air routes.
+
+                4. **"destination"**:
+                - **"af"**: Represents the ICAO code of the destination airfield. It should be a string of maximum size 4 characters.
+
+                5. **"time"**: Starting time of aircraft initialization in the simulator, represented as an integer in seconds.
+
+                6. **"type"**: Type of aircraft, e.g., A320. This should be a string with a maximum size of 4 characters.
+                -----------------------------------------------------------
+                When generating scenarios, consider the common air routes from the data bundle and find their respective coordinates, which are also found in the data bundle. Then knowing the path and distance the aircraft is going to take via calculation from the series of coordinates, set an initialization position and time such that the scenario will play out in accordance to the user's request.
+                Data bundle: {context}
+
+                -----------------------------------------------------------
+                When the user requests for a scenario, strictly give the output in JSON based on schema_1. Do not give python code. If the user asks for something unrelated, just reply normally. Refer to the chat_history to understand the context of the conversation before replying.
+
+          """),
+            MessagesPlaceholder(variable_name="chat_history"),
+            ("human", "{question}"),
+        ]
+    )
     # extracted_docs = retriever.get_relevant_documents(query=QUERY_PROMPT)
     # st.write(extracted_docs)
     chat_history = get_history(st.session_state.messages)
