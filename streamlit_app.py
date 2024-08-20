@@ -86,8 +86,8 @@ def create_vector_db(file_upload) -> Chroma:
         loader = UnstructuredPDFLoader(path)
         data = loader.load()
 
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=550, chunk_overlap=100)
+    text_splitter = RecursiveCharacterTextSplitter(separators=["---", "\n\n", "\n"],
+                                                   chunk_size=550, chunk_overlap=100)
     chunks = text_splitter.split_documents(data)
     logger.info("Document split into chunks")
 
