@@ -25,7 +25,7 @@ from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_community.chat_models import ChatOllama
 from langchain_core.runnables import RunnablePassthrough
 from langchain.retrievers.multi_query import MultiQueryRetriever
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from typing import List, Tuple, Dict, Any, Optional
 
 
@@ -107,7 +107,9 @@ def get_history(chat):  # added get_history function
     chat_history = []
     # recall_value = 6
     for m in chat:
-        if m['role'] == 'user':
+        if m["role"] == 'system':
+            chat_history.append(SystemMessage(content=m["content"]))
+        elif m['role'] == 'user':
             chat_history.append(HumanMessage(content=m["content"]))
         elif m["role"] == "assistant":
             chat_history.append(AIMessage(content=m["content"]))
@@ -152,8 +154,8 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
 
     def format_docs(docs):
         # st.write("\n\n".join(doc.page_content for doc in docs))
-        return "\n\n".join(doc.page_content for doc in docs)
-    formatted_docs = format_docs(extracted_docs)
+        return "\n\n".join(doc.page_content for doc in docs), "\n\n".join(doc.page_content for doc in docs[:3])
+    formatted_docs, extracted_context = format_docs(extracted_docs)
     st.write([formatted_docs])
     # prompt = ChatPromptTemplate.from_messages(
     #     [
@@ -321,9 +323,10 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
 
     response = chain.invoke(
         {"context": formatted_docs, "chat_history": chat_history, "question": question})
+    extracted_context = """Context provided: """ + extracted_context
 
     logger.info("Question processed and response generated")
-    return response
+    return response, extracted_context
 
 
 @st.cache_data
@@ -545,9 +548,10 @@ def main() -> None:
         message_container = st.container(height=500, border=True)
 
         for message in st.session_state["messages"]:
-            avatar = "🤖" if message["role"] == "assistant" else "👨‍✈️"
-            with message_container.chat_message(message["role"], avatar=avatar):
-                st.markdown(message["content"])
+            if message['role'] != "system":
+                avatar = "🤖" if message["role"] == "assistant" else "👨‍✈️"
+                with message_container.chat_message(message["role"], avatar=avatar):
+                    st.markdown(message["content"])
 
         if prompt := st.chat_input("Enter a prompt here..."):
             try:
@@ -559,8 +563,12 @@ def main() -> None:
                 with message_container.chat_message("assistant", avatar="🤖"):
                     with st.spinner(":green[processing...]"):
                         if st.session_state["vector_db"] is not None:
-                            response = process_question(
+                            response, extracted_context = process_question(
                                 prompt, st.session_state["vector_db"], selected_model
+                            )
+                            # print(extracted_context)
+                            st.session_state["messages"].append(
+                                {"role": "system", "content": extracted_context}
                             )
                             st.markdown(response)
                         else:
@@ -570,6 +578,7 @@ def main() -> None:
                     st.session_state["messages"].append(
                         {"role": "assistant", "content": response}
                     )
+
                 json_d = str2dict(response)
 
                 if json_d:
