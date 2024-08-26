@@ -139,11 +139,30 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     llm = ChatCohere(cohere_api_key='njPNUMUWPRMIoHRPoV8xSJvucU2sEZw99puyga7r',
                      model="command-r", temperature=0, streaming=True,
                      preamble="""You are an AI assistant capable of generating air traffic scenarios for a simulator.
-                    - When the user requests for a scenario, strictly give the output in JSON, otherwise reply normally.
+                    - When the user requests for a scenario, strictly give the output in JSON based on schema_1, otherwise reply normally.
                     - Do not give python code.
                     - Refer to the chat_history to understand the context of the conversation before replying.
                     - Use complete air_routes from the Data Bundle when generating outputs.
                     - Ensure that the aircraft are separated by a minimum time 100 seconds.
+                    
+                    ----------------------------------------
+                        schema_1:
+                        {{"aircraft 1": {{
+                        "departure": {{
+                        "af": "ICAO code of departure airfield here"
+                        }},
+                        "initial_position": {{
+                        "latitude": "latitude in DMS format for example 023106.70N",
+                        "longitude": "latitude in DMS format for example 1035709.81E",
+                        "altitude": "Altitude reading for example FL300",
+                        "heading": "heading in degrees for example 32.05"
+                        }},
+                        "air_route": "list of waypoints that make up the air route, for example ["RAXIM", "OTLON", "VISAT", "DUBSA", "DAMOG", "DOLOX", "DUDIS"]",
+                        "destination": {{
+                        "af": "ICAO code of destination airfield here"
+                        }},
+                        "time": "starting time of aircraft initialization in the simulator as an integer representing seconds, for example 300",
+                        "type": "type of aircraft, for example A320"}}
 
                     ---------------------------------------------
                     Only use the Available Aircraft Types:
@@ -177,7 +196,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     #     vector_db.as_retriever(), llm=llm, include_original=True
     # )
     retriever = vector_db.as_retriever(
-        search_type="mmr", search_kwargs={"fetch_k": 25, "k": 16, "lambda_mult": 0.5})
+        search_type="mmr", search_kwargs={"fetch_k": 25, "k": 18, "lambda_mult": 0.5})
 
     extracted_docs = retriever.invoke(question)
 
@@ -260,24 +279,6 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
             MessagesPlaceholder(variable_name="chat_history"),
 
             ("human", """User prompt: {question}
-                        ----------------------------------------
-                        If the user requests for scenario generation, please use the following schema_1, otherwise reply normally:
-                        {{"aircraft 0": {{
-                        "departure": {{
-                        "af": "ICAO code of departure airfield here"
-                        }},
-                        "initial_position": {{
-                        "latitude": "latitude in DMS format for example 023106.70N",
-                        "longitude": "latitude in DMS format for example 1035709.81E",
-                        "altitude": "Altitude reading for example FL300",
-                        "heading": "heading in degrees for example 32.053335700277444"
-                        }},
-                        "air_route": "list of waypoints that make up the air route, for example ["RAXIM", "OTLON", "VISAT", "DUBSA", "DAMOG", "DOLOX", "DUDIS"]",
-                        "destination": {{
-                        "af": "ICAO code of destination airfield here"
-                        }},
-                        "time": "starting time of aircraft initialization in the simulator as an integer representing seconds, for example 300",
-                        "type": "type of aircraft, for example A320"}}
                         --------------------------------------------
                         The Data bundle provides examples of airways, please refer to them and use air routes from the examples when creating scenarios
                         Data bundle: {context}
