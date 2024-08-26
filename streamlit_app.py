@@ -86,7 +86,7 @@ def create_vector_db(file_upload) -> Chroma:
         loader = UnstructuredPDFLoader(path)
         data = loader.load()
 
-    text_splitter = RecursiveCharacterTextSplitter(separators=["---", "\n\n", "\n"],
+    text_splitter = RecursiveCharacterTextSplitter(separators=["-----------", "\n\n", "\n"],
                                                    chunk_size=550, chunk_overlap=100)
     chunks = text_splitter.split_documents(data)
     logger.info("Document split into chunks")
@@ -210,6 +210,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
                     - When the user requests for a scenario, strictly give the output in JSON.
                     - Do not give python code. If the user asks for something unrelated, just reply normally.
                     - Refer to the chat_history to understand the context of the conversation before replying.
+                    - Use complete air_routes when generating outputs.
 
                     ---------------------------------------------
 
@@ -440,6 +441,9 @@ def json_to_xml(json_data):
     default_equipment.text = "SSR_MODE_A+SSR_MODE_C+P_RNAV+FMS+FMS_GUIDANCE_VNAV+FMS_GUIDANCE_SPEED"
 
     for i, item in enumerate(json_data.values()):
+        if isinstance(item, str) and " " in item:
+            # Remove all spaces in the string
+            item = item.replace(" ", "")
         # Create the initial-flightplans element
         initial_flightplans = ET.SubElement(
             root_ifp, "initial-flightplans", key="initial-flightplans: "+str(i))
@@ -447,14 +451,14 @@ def json_to_xml(json_data):
         usage = ET.SubElement(initial_flightplans, "usage")
         usage.text = "ALL"
         time = ET.SubElement(initial_flightplans, "time")
-        time.text = str(item["time"])
+        time.text = str(item["time"])  # From model
         callsign = ET.SubElement(initial_flightplans, "callsign")
         callsign.text = "SQ1"+str(i)
         rules = ET.SubElement(initial_flightplans, "rules")
         squawk = ET.SubElement(initial_flightplans, "squawk", units="octal")
         squawk.text = str(random.randint(1000, 9999))
         aircraft_type = ET.SubElement(initial_flightplans, "type")
-        aircraft_type.text = item["type"]
+        aircraft_type.text = item["type"]  # From model
         waketurb = ET.SubElement(initial_flightplans, "waketurb")
         waketurb.text = waket[item["type"]]
         equip = ET.SubElement(initial_flightplans, "equip")
@@ -462,12 +466,12 @@ def json_to_xml(json_data):
 
         dep = ET.SubElement(initial_flightplans, "dep")
         dep_af = ET.SubElement(dep, "af")
-        dep_af.text = item["departure"]["af"]
+        dep_af.text = item["departure"]["af"]  # From model
         dep_rwy = ET.SubElement(dep, "rwy")
 
         des = ET.SubElement(initial_flightplans, "des")
         des_af = ET.SubElement(des, "af")
-        des_af.text = item["destination"]["af"]
+        des_af.text = item["destination"]["af"]  # From model
 
         for route in item["air_route"]:
             air_route = ET.SubElement(initial_flightplans, "air_route")
@@ -478,15 +482,15 @@ def json_to_xml(json_data):
         init = ET.SubElement(initial_flightplans, "init")
         pos = ET.SubElement(init, "pos")
         lat = ET.SubElement(pos, "lat")
-        lat.text = item["initial_position"]["latitude"]
+        lat.text = item["initial_position"]["latitude"]  # From model
         lon = ET.SubElement(pos, "lon")
-        lon.text = item["initial_position"]["longitude"]
+        lon.text = item["initial_position"]["longitude"]  # From model
 
         freq = ET.SubElement(init, "freq")
         freq.text = 'SINRADS1'
         alt = ET.SubElement(
             init, "alt", units=item["initial_position"]["altitude"][:2])
-        alt.text = item["initial_position"]["altitude"][2:]
+        alt.text = item["initial_position"]["altitude"][2:]  # From model
         hdg = ET.SubElement(init, "hdg")
         hdg.text = item["initial_position"]["heading"]
 
