@@ -196,7 +196,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     #     vector_db.as_retriever(), llm=llm, include_original=True
     # )
     retriever = vector_db.as_retriever(
-        search_type="mmr", search_kwargs={"fetch_k": 25, "k": 18, "lambda_mult": 0.5})
+        search_type="mmr", search_kwargs={"fetch_k": 28, "k": 16, "lambda_mult": 0.5})
 
     extracted_docs = retriever.invoke(question)
 
