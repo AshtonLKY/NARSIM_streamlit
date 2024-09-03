@@ -409,7 +409,7 @@ def str2dict(response):
     Process each chunk of the streamed response.
     """
     # Define the regular expression pattern
-    pattern = r'{.*}'
+    pattern = r'{.*?}'
 
     # Find all matches
     matches = re.findall(pattern, response, re.DOTALL)
