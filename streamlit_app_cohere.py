@@ -136,7 +136,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
     """
     logger.info(f"""Processing question: {
                 question} using model: {selected_model}""")
-    llm = ChatCohere(cohere_api_key='your-api-key',
+    llm = ChatCohere(cohere_api_key='njPNUMUWPRMIoHRPoV8xSJvucU2sEZw99puyga7r',
                      model="command-r", temperature=0, streaming=True,
                      preamble="""You are an AI assistant capable of generating air traffic scenarios for a simulator.
                     - When the user requests for a scenario, strictly give the output in JSON based on schema_1, otherwise reply normally.
@@ -175,9 +175,9 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
                     • A333
                    -----------------------------------------------
                    If the number of aircraft are not specified, use the following range:
-                   • Low density traffic : 1 to 4 aircraft.
-                   • Medium density traffic: 5 to 9 aircraft.
-                   • High density traffic: 10 to 20 aircraft.
+                   • Type 1 traffic density: 1 to 4 aircraft.
+                   • Type 2 traffic density: 5 to 9 aircraft.
+                   • Type 3 traffic density: 10 to 20 aircraft.
                    Otherwise, ensure to generate the same number of aircraft that are specified.""")
     # llm = ChatOllama(model="selected_model",
     #                  # format = 'json',
@@ -206,7 +206,7 @@ def process_question(question: str, vector_db: Chroma, selected_model: str) -> s
         return "\n\n".join(doc.page_content for doc in docs)
     # formatted_docs, extracted_context = format_docs(extracted_docs)
     formatted_docs = format_docs(extracted_docs)
-    st.write([formatted_docs])
+    # st.write([formatted_docs])
     # prompt = ChatPromptTemplate.from_messages(
     #     [
     #         (
@@ -409,15 +409,15 @@ def str2dict(response):
     Process each chunk of the streamed response.
     """
     # Define the regular expression pattern
-    pattern = r'{.*?}'
+    pattern = r"```json\n(.*?)\n```"
 
     # Find all matches
     matches = re.findall(pattern, response, re.DOTALL)
     json_str = ' '.join(matches)
-
+    # st.write(matches)
     try:
-        json_d = json.loads(json_str)
-        # st.write(json_d)
+        json_d = json.loads(json_str)[0]
+        # st.write(json_d[0])
     except json.JSONDecodeError:
         json_d = ""
     return json_d
@@ -472,7 +472,7 @@ def json_to_xml(json_data):
             item = item.replace(" ", "")
         # Create the initial-flightplans element
         initial_flightplans = ET.SubElement(
-            root_ifp, "initial-flightplans", key="initial-flightplans: "+str(i))
+            root_ifp, "initial-flightplans", key="initial-flightplans:"+str(i))
 
         usage = ET.SubElement(initial_flightplans, "usage")
         usage.text = "ALL"
@@ -482,7 +482,7 @@ def json_to_xml(json_data):
         callsign.text = "SQ1"+str(i)
         rules = ET.SubElement(initial_flightplans, "rules")
         squawk = ET.SubElement(initial_flightplans, "squawk", units="octal")
-        squawk.text = ''.join([str(random.randint(0, 7)) for _ in range(4)])
+        squawk.text = str(random.randint(1000, 9999))
         aircraft_type = ET.SubElement(initial_flightplans, "type")
         aircraft_type.text = item["type"]  # From model
         waketurb = ET.SubElement(initial_flightplans, "waketurb")
@@ -518,7 +518,7 @@ def json_to_xml(json_data):
             init, "alt", units=item["initial_position"]["altitude"][:2])
         alt.text = item["initial_position"]["altitude"][2:]  # From model
         hdg = ET.SubElement(init, "hdg")
-        hdg.text = item["initial_position"]["heading"]
+        hdg.text = str(item["initial_position"]["heading"])
 
     # Convert the tree to a string
     xdat_content = ET.tostring(
@@ -622,7 +622,7 @@ def main() -> None:
                     )
 
                 json_d = str2dict(response)
-
+                st.write(json_d)
                 if json_d:
                     # print(f"Valid JSON string: {json_str}")
                     # st.write([json_to_xml(json_d)])
