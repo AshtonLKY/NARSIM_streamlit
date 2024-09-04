@@ -482,7 +482,7 @@ def json_to_xml(json_data):
         callsign.text = "SQ1"+str(i)
         rules = ET.SubElement(initial_flightplans, "rules")
         squawk = ET.SubElement(initial_flightplans, "squawk", units="octal")
-        squawk.text = str(random.randint(1000, 9999))
+        squawk.text = ''.join(str(random.randint(0, 7)) for _ in range(4))
         aircraft_type = ET.SubElement(initial_flightplans, "type")
         aircraft_type.text = item["type"]  # From model
         waketurb = ET.SubElement(initial_flightplans, "waketurb")
