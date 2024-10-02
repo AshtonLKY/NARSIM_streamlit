@@ -17,3 +17,10 @@ All instructions are found in the notebook
 - Ensure system message is applied correctly (So far the prompt template does a good job of instructing the LLM)
 - Allow for multiple PDF
   
+# OpenAI NARSIM
+
+## Usage
+Just download the OpenAI .ipynb file and run it
+## To do
+- Function Calling
+- Conflict generation tests
