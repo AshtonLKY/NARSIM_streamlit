@@ -20,7 +20,7 @@ All instructions are found in the notebook
 # OpenAI NARSIM
 
 ## Usage
-Just download the OpenAI .ipynb file and run it
+Just download the OpenAI .ipynb file as well as the latest data bundle, then make sure the file is in the same folder as the notebook file (or if you are on colab, just drop it in the content folder). Then run the cells in the notebook to use.
 ## To do
 - Function Calling
 - Conflict generation tests
